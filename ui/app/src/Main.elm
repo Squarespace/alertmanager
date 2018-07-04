@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Navigation
 import Parsing
@@ -15,6 +15,8 @@ import Types
             , NavigateToNotFound
             , NavigateToStatus
             , RedirectAlerts
+            , MsgForAlertList
+            , ReloadAlerts
             )
         , Model
         )
@@ -27,7 +29,11 @@ import Views.SilenceView.Types exposing (initSilenceView)
 import Updates exposing (update)
 import Utils.Api as Api
 import Utils.Types exposing (ApiData(Loading))
+import Alerts.Types exposing (Alert)
 import Json.Decode as Json
+
+
+port alertEvents : (() -> msg) -> Sub msg
 
 
 main : Program Json.Value Model Msg
@@ -36,7 +42,7 @@ main =
         { init = init
         , update = update
         , view = Views.view
-        , subscriptions = always Sub.none
+        , subscriptions = subscriptions
         }
 
 
@@ -127,3 +133,8 @@ urlUpdate location =
 
             NotFoundRoute ->
                 NavigateToNotFound
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    alertEvents (always ReloadAlerts)

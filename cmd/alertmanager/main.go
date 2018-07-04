@@ -41,6 +41,7 @@ import (
 	"github.com/prometheus/alertmanager/notify"
 	"github.com/prometheus/alertmanager/provider/mem"
 	"github.com/prometheus/alertmanager/silence"
+	"github.com/prometheus/alertmanager/stream"
 	"github.com/prometheus/alertmanager/template"
 	"github.com/prometheus/alertmanager/types"
 	"github.com/prometheus/alertmanager/ui"
@@ -289,6 +290,9 @@ func main() {
 		logger,
 	)
 
+	eventStream := stream.New(alerts, marker.Status)
+	defer eventStream.Close()
+
 	amURL, err := extURL(*listenAddress, *externalURL)
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -332,6 +336,7 @@ func main() {
 			return err
 		}
 
+		eventStream.Update(conf)
 		tmpl, err = template.FromGlobs(conf.Templates...)
 		if err != nil {
 			return err
@@ -383,6 +388,8 @@ func main() {
 	ui.Register(router, webReload, logger)
 
 	apiv.Register(router.WithPrefix("/api/v1"))
+
+	eventStream.Register(router)
 
 	level.Info(logger).Log("msg", "Listening", "address", *listenAddress)
 	go listen(*listenAddress, router, logger)

@@ -45,6 +45,7 @@ type Msg
     | BootstrapCSSLoaded (ApiData String)
     | FontAwesomeCSSLoaded (ApiData String)
     | SetDefaultCreator String
+    | ReloadAlerts
 
 
 type Route

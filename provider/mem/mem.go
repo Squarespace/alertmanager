@@ -83,11 +83,24 @@ func (a *Alerts) Close() error {
 // resolved and successfully notified about.
 // They are not guaranteed to be in chronological order.
 func (a *Alerts) Subscribe() provider.AlertIterator {
+	return a.subscribe(true)
+}
+
+func (a *Alerts) SubscribeNewAlerts() provider.AlertIterator {
+	return a.subscribe(false)
+}
+
+func (a *Alerts) subscribe(includeCurrentPending bool) provider.AlertIterator {
 	var (
-		ch   = make(chan *types.Alert, 200)
-		done = make(chan struct{})
+		ch     = make(chan *types.Alert, 200)
+		done   = make(chan struct{})
+		alerts []*types.Alert
+		err    error
 	)
-	alerts, err := a.getPending()
+
+	if includeCurrentPending {
+		alerts, err = a.getPending()
+	}
 
 	a.mtx.Lock()
 	i := a.next
@@ -95,24 +108,26 @@ func (a *Alerts) Subscribe() provider.AlertIterator {
 	a.listeners[i] = ch
 	a.mtx.Unlock()
 
-	go func() {
-		defer func() {
-			a.mtx.Lock()
-			delete(a.listeners, i)
-			close(ch)
-			a.mtx.Unlock()
-		}()
+	if includeCurrentPending {
+		go func() {
+			defer func() {
+				a.mtx.Lock()
+				delete(a.listeners, i)
+				close(ch)
+				a.mtx.Unlock()
+			}()
 
-		for _, a := range alerts {
-			select {
-			case ch <- a:
-			case <-done:
-				return
+			for _, a := range alerts {
+				select {
+				case ch <- a:
+				case <-done:
+					return
+				}
 			}
-		}
 
-		<-done
-	}()
+			<-done
+		}()
+	}
 
 	return provider.NewAlertIterator(ch, done, err)
 }

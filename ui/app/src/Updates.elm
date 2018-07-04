@@ -121,3 +121,10 @@ update msg ({ basePath, apiUrl } as model) =
 
         SetDefaultCreator name ->
             ( { model | defaultCreator = name }, Cmd.none )
+
+        ReloadAlerts ->
+            let
+                ( alertList, cmd ) =
+                    Views.AlertList.Updates.update FetchAlerts model.alertList model.filter apiUrl basePath
+            in
+                ( { model | alertList = alertList, route = AlertsRoute model.filter, filter = model.filter }, cmd )
